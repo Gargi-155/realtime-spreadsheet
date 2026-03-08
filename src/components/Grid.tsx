@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Cell from "./Cell";
 
 const ROWS = 20;
 const COLS = 10;
@@ -26,10 +27,7 @@ export default function Grid() {
           <tr>
             <th className="w-12"></th>
             {Array.from({ length: COLS }).map((_, col) => (
-              <th
-                key={col}
-                className="border bg-gray-100 px-4 py-2 text-center"
-              >
+              <th key={col} className="border bg-gray-100 px-4 py-2 text-center">
                 {columnLabel(col)}
               </th>
             ))}
@@ -46,12 +44,9 @@ export default function Grid() {
 
                 return (
                   <td key={id} className="border">
-                    <input
-                      className="w-full p-2 outline-none"
+                    <Cell
                       value={cells[id] || ""}
-                      onChange={(e) =>
-                        handleChange(id, e.target.value)
-                      }
+                      onChange={(value) => handleChange(id, value)}
                     />
                   </td>
                 );
