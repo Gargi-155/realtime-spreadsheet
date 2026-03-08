@@ -9,7 +9,7 @@ The application is built using **Next.js (App Router), TypeScript, Tailwind CSS,
 ## Live Demo
 
 Live URL  
-https://realtime-spreadsheet.vercel.app
+https://realtime-spreadsheet-trademarkia.vercel.app/
 
 Demo Video  
 (Insert Loom link here)
