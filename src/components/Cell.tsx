@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface CellProps {
   rawValue: string;
@@ -20,8 +20,18 @@ export default function Cell({
   const [editing, setEditing] = useState(false);
   const [localValue, setLocalValue] = useState(rawValue);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Automatically focus when cell becomes active
+  useEffect(() => {
+    if (active && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [active]);
+
   return (
     <input
+      ref={inputRef}
       className={`w-full p-2 outline-none bg-transparent ${
         active ? "border-2 border-blue-500" : ""
       }`}

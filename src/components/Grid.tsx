@@ -20,10 +20,11 @@ function columnLabel(index: number) {
 export default function Grid({ docId }: GridProps) {
   const [cells, setCells] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [activeCell, setActiveCell] = useState<string | null>(null);
-  
 
-  // Listen for realtime updates from Firestore
+  const [activeRow, setActiveRow] = useState(0);
+  const [activeCol, setActiveCol] = useState(0);
+
+  // Realtime Firestore listener
   useEffect(() => {
     if (!docId) return;
 
@@ -40,7 +41,7 @@ export default function Grid({ docId }: GridProps) {
     return () => unsubscribe();
   }, [docId]);
 
-  // Update Firestore when a cell changes
+  // Save cell change
   const handleChange = async (cellId: string, value: string) => {
     if (!docId) return;
 
@@ -61,10 +62,37 @@ export default function Grid({ docId }: GridProps) {
     setSaving(false);
   };
 
-  return (
-    <div className="mt-8 overflow-auto border rounded-lg p-2">
+  // Keyboard navigation
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "ArrowDown") {
+      setActiveRow((r) => Math.min(r + 1, ROWS - 1));
+    }
 
-      {/* Saving Indicator */}
+    if (e.key === "ArrowUp") {
+      setActiveRow((r) => Math.max(r - 1, 0));
+    }
+
+    if (e.key === "ArrowRight" || e.key === "Tab") {
+      e.preventDefault();
+      setActiveCol((c) => Math.min(c + 1, COLS - 1));
+    }
+
+    if (e.key === "ArrowLeft") {
+      setActiveCol((c) => Math.max(c - 1, 0));
+    }
+
+    if (e.key === "Enter") {
+      setActiveRow((r) => Math.min(r + 1, ROWS - 1));
+    }
+  }
+
+  return (
+    <div
+      className="mt-8 overflow-auto border rounded-lg p-2"
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      {/* Saving indicator */}
       <div className="text-sm text-gray-500 mb-2">
         {saving ? "Saving..." : "Saved ✓"}
       </div>
@@ -73,6 +101,7 @@ export default function Grid({ docId }: GridProps) {
         <thead>
           <tr>
             <th className="w-12"></th>
+
             {Array.from({ length: COLS }).map((_, col) => (
               <th
                 key={col}
@@ -93,16 +122,20 @@ export default function Grid({ docId }: GridProps) {
 
               {Array.from({ length: COLS }).map((_, col) => {
                 const id = `${columnLabel(col)}${row + 1}`;
+                const isActive = row === activeRow && col === activeCol;
 
                 return (
                   <td key={id} className="border">
                     <Cell
-                    rawValue={cells[id] || ""}
-                    value={evaluateFormula(cells[id] || "", cells)}
-                    onCommit={(value) => handleChange(id, value)}
-                    active={activeCell === id}
-                    onFocus={() => setActiveCell(id)}
-                    />   
+                      rawValue={cells[id] || ""}
+                      value={evaluateFormula(cells[id] || "", cells)}
+                      active={isActive}
+                      onFocus={() => {
+                        setActiveRow(row);
+                        setActiveCol(col);
+                      }}
+                      onCommit={(value) => handleChange(id, value)}
+                    />
                   </td>
                 );
               })}
