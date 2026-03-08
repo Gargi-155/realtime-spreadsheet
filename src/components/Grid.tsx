@@ -1,7 +1,10 @@
 "use client";
+
+import { useState, useEffect } from "react";
 import { evaluateFormula } from "@/lib/formulas";
-import { useState } from "react";
 import Cell from "./Cell";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 const ROWS = 20;
 const COLS = 10;
@@ -12,13 +15,33 @@ function columnLabel(index: number) {
 
 export default function Grid() {
   const [cells, setCells] = useState<Record<string, string>>({});
+  useEffect(() => {
+  const docRef = doc(db, "documents", "sheet1");
 
-  const handleChange = (cellId: string, value: string) => {
-    setCells((prev) => ({
-      ...prev,
-      [cellId]: value,
-    }));
+  const unsubscribe = onSnapshot(docRef, (snapshot) => {
+    const data = snapshot.data();
+    if (data?.cells) {
+      setCells(data.cells);
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
+
+  const handleChange = async (cellId: string, value: string) => {
+  const newCells = {
+    ...cells,
+    [cellId]: value,
   };
+
+  setCells(newCells);
+
+  const docRef = doc(db, "documents", "sheet1");
+
+  await updateDoc(docRef, {
+    cells: newCells,
+  });
+};
 
   return (
     <div className="mt-8 overflow-auto border rounded-lg">
