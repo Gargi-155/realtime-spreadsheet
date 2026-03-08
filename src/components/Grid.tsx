@@ -24,7 +24,11 @@ export default function Grid({ docId }: GridProps) {
   const [activeRow, setActiveRow] = useState(0);
   const [activeCol, setActiveCol] = useState(0);
 
-  // Realtime Firestore listener
+  const [colWidths, setColWidths] = useState<number[]>(
+    Array(COLS).fill(120)
+  );
+
+  // Firestore realtime listener
   useEffect(() => {
     if (!docId) return;
 
@@ -86,6 +90,29 @@ export default function Grid({ docId }: GridProps) {
     }
   }
 
+  // Column resizing
+  function startResize(colIndex: number, startX: number) {
+    const startWidth = colWidths[colIndex];
+
+    function onMouseMove(e: MouseEvent) {
+      const newWidth = startWidth + (e.clientX - startX);
+
+      setColWidths((prev) => {
+        const copy = [...prev];
+        copy[colIndex] = Math.max(newWidth, 60);
+        return copy;
+      });
+    }
+
+    function onMouseUp() {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }
+
   return (
     <div
       className="mt-8 overflow-auto border rounded-lg p-2"
@@ -105,9 +132,16 @@ export default function Grid({ docId }: GridProps) {
             {Array.from({ length: COLS }).map((_, col) => (
               <th
                 key={col}
-                className="border bg-gray-100 px-4 py-2 text-center"
+                style={{ width: colWidths[col] }}
+                className="border bg-gray-100 px-4 py-2 text-center relative"
               >
                 {columnLabel(col)}
+
+                {/* resize handle */}
+                <div
+                  onMouseDown={(e) => startResize(col, e.clientX)}
+                  className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                />
               </th>
             ))}
           </tr>
@@ -125,7 +159,11 @@ export default function Grid({ docId }: GridProps) {
                 const isActive = row === activeRow && col === activeCol;
 
                 return (
-                  <td key={id} className="border">
+                  <td
+                    key={id}
+                    className="border"
+                    style={{ width: colWidths[col] }}
+                  >
                     <Cell
                       rawValue={cells[id] || ""}
                       value={evaluateFormula(cells[id] || "", cells)}
