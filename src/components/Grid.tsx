@@ -20,6 +20,8 @@ function columnLabel(index: number) {
 export default function Grid({ docId }: GridProps) {
   const [cells, setCells] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [activeCell, setActiveCell] = useState<string | null>(null);
+  
 
   // Listen for realtime updates from Firestore
   useEffect(() => {
@@ -95,10 +97,12 @@ export default function Grid({ docId }: GridProps) {
                 return (
                   <td key={id} className="border">
                     <Cell
-                rawValue={cells[id] || ""}
-                value={evaluateFormula(cells[id] || "", cells)}
-                onCommit={(value) => handleChange(id, value)}
-                />   
+                    rawValue={cells[id] || ""}
+                    value={evaluateFormula(cells[id] || "", cells)}
+                    onCommit={(value) => handleChange(id, value)}
+                    active={activeCell === id}
+                    onFocus={() => setActiveCell(id)}
+                    />   
                   </td>
                 );
               })}
