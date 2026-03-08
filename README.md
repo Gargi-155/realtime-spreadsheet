@@ -12,7 +12,7 @@ Live URL
 https://realtime-spreadsheet-trademarkia.vercel.app/
 
 Demo Video  
-(Insert Loom link here)
+https://www.loom.com/share/23e48ae0694c45e8853ee41ab6ffc6c6
 
 GitHub Repository  
 https://github.com/Gargi-155/realtime-spreadsheet
