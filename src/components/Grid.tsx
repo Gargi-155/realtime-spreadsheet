@@ -39,7 +39,10 @@ export default function Grid({ docId }: GridProps) {
 
       if (data?.cells) {
         setCells(data.cells);
-      }
+    }
+    if (data?.colWidths) {
+        setColWidths(data.colWidths);
+    }
     });
 
     return () => unsubscribe();
@@ -100,8 +103,14 @@ export default function Grid({ docId }: GridProps) {
       setColWidths((prev) => {
         const copy = [...prev];
         copy[colIndex] = Math.max(newWidth, 60);
+        
+        if (docId) {
+            const docRef = doc(db, "documents", docId);
+            updateDoc(docRef, { colWidths: copy });
+        }
+        
         return copy;
-      });
+    });
     }
 
     function onMouseUp() {
