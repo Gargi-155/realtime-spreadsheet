@@ -1,45 +1,53 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
 import { db } from "@/lib/firebase";
+
 import {
   collection,
-  addDoc,
-  serverTimestamp,
   getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
 } from "firebase/firestore";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
-interface Doc {
+interface Sheet {
   id: string;
-  title?: string;
+  title: string;
 }
 
 export default function Home() {
   const router = useRouter();
-  const [docs, setDocs] = useState<Doc[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  async function loadDocs() {
+  async function loadSheets() {
     const snapshot = await getDocs(collection(db, "documents"));
 
-    const list: Doc[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
+    const list: Sheet[] = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as any),
     }));
 
-    setDocs(list);
+    setSheets(list);
+    setLoading(false);
   }
 
   useEffect(() => {
-    loadDocs();
+    loadSheets();
   }, []);
 
   async function createSheet() {
-    setCreating(true);
+    const name = prompt("Enter sheet name");
+
+    if (!name) return;
 
     const docRef = await addDoc(collection(db, "documents"), {
-      title: "Untitled Sheet",
+      title: name,
       createdAt: serverTimestamp(),
       lastModified: serverTimestamp(),
       cells: {},
@@ -49,35 +57,107 @@ export default function Home() {
     router.push(`/doc/${docRef.id}`);
   }
 
+  async function renameSheet(id: string, currentName: string) {
+    const newName = prompt("Rename sheet", currentName);
+
+    if (!newName) return;
+
+    const docRef = doc(db, "documents", id);
+
+    await updateDoc(docRef, {
+      title: newName,
+      lastModified: serverTimestamp(),
+    });
+
+    loadSheets();
+  }
+
+  async function deleteSheet(id: string) {
+    const confirmDelete = confirm("Delete this sheet?");
+
+    if (!confirmDelete) return;
+
+    const docRef = doc(db, "documents", id);
+
+    await deleteDoc(docRef);
+
+    loadSheets();
+  }
+
   return (
-    <main className="min-h-screen bg-gray-50 p-10">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-12">
 
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
 
-        <h1 className="text-4xl font-bold mb-2">
-          Spreadsheet Dashboard
-        </h1>
+        {/* Header */}
 
-        <p className="text-gray-600 mb-8">
-          Create and collaborate on spreadsheets in real time.
-        </p>
+        <div className="flex justify-between items-center mb-12">
 
-        <button
-          onClick={createSheet}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow hover:bg-blue-700 mb-8"
-        >
-          {creating ? "Creating..." : "+ Create New Sheet"}
-        </button>
+          <div>
+            <h1 className="text-4xl font-bold text-slate-800">
+              SheetLab
+            </h1>
 
-        <div className="space-y-3">
+            <p className="text-slate-500 mt-1">
+              Real-time collaborative spreadsheets
+            </p>
+          </div>
 
-          {docs.map((doc) => (
+          <button
+            onClick={createSheet}
+            className="bg-slate-900 text-white px-6 py-3 rounded-lg shadow hover:bg-black transition"
+          >
+            + New Sheet
+          </button>
+
+        </div>
+
+        {/* Loading */}
+
+        {loading && (
+          <p className="text-slate-500">Loading sheets...</p>
+        )}
+
+        {/* Sheet list */}
+
+        <div className="space-y-4">
+
+          {sheets.map((sheet) => (
             <div
-              key={doc.id}
-              onClick={() => router.push(`/doc/${doc.id}`)}
-              className="p-4 bg-white rounded-lg shadow cursor-pointer hover:bg-gray-100"
+              key={sheet.id}
+              className="bg-white border border-slate-200 p-5 rounded-xl flex justify-between items-center hover:shadow-md transition"
             >
-              {doc.title || "Untitled Sheet"}
+              <div
+                className="cursor-pointer"
+                onClick={() => router.push(`/doc/${sheet.id}`)}
+              >
+                <div className="font-semibold text-lg text-slate-800">
+                  {sheet.title}
+                </div>
+
+                <div className="text-sm text-slate-400">
+                  ID: {sheet.id}
+                </div>
+              </div>
+
+              <div className="flex gap-4 text-sm">
+
+                <button
+                  onClick={() => renameSheet(sheet.id, sheet.title)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Rename
+                </button>
+
+                <button
+                  onClick={() => deleteSheet(sheet.id)}
+                  className="text-red-500 hover:underline"
+                >
+                  Delete
+                </button>
+
+              </div>
+
             </div>
           ))}
 
