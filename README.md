@@ -228,6 +228,9 @@ Some additional features that could be implemented:
 - drag-reordering of columns
 - authentication with Google
 
+Images - 
+<img width="1919" height="930" alt="image" src="https://github.com/user-attachments/assets/bf89d414-b1ab-4388-b551-dfa4d68512fd" />
+
 
 # Final Thoughts
 
