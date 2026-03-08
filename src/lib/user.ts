@@ -3,11 +3,13 @@ export function getUser() {
 
   if (stored) return JSON.parse(stored);
 
-  const colors = ["red", "blue", "green", "purple", "orange"];
+  const name = prompt("Enter your display name") || "Anonymous";
+
+  const colors = ["#ef4444","#3b82f6","#10b981","#8b5cf6","#f97316"];
 
   const user = {
-    id: Math.random().toString(36).substring(2),
-    name: "User-" + Math.floor(Math.random() * 1000),
+    id: name.toLowerCase().replace(/\s+/g, "-"),
+    name: name,
     color: colors[Math.floor(Math.random() * colors.length)],
   };
 

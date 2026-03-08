@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { db } from "@/lib/firebase";
+import { getUser } from "@/lib/user";
 
 import {
   collection,
@@ -18,6 +19,8 @@ import {
 interface Sheet {
   id: string;
   title: string;
+  author?: string;
+  lastModified?: any;
 }
 
 export default function Home() {
@@ -46,8 +49,11 @@ export default function Home() {
 
     if (!name) return;
 
+    const user = getUser();
+
     const docRef = await addDoc(collection(db, "documents"), {
       title: name,
+      author: user.name,
       createdAt: serverTimestamp(),
       lastModified: serverTimestamp(),
       cells: {},
@@ -86,13 +92,10 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-12">
-
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-
         <div className="flex justify-between items-center mb-12">
-
           <div>
             <h1 className="text-4xl font-bold text-slate-800">
               SheetLab
@@ -109,19 +112,13 @@ export default function Home() {
           >
             + New Sheet
           </button>
-
         </div>
-
-        {/* Loading */}
 
         {loading && (
           <p className="text-slate-500">Loading sheets...</p>
         )}
 
-        {/* Sheet list */}
-
         <div className="space-y-4">
-
           {sheets.map((sheet) => (
             <div
               key={sheet.id}
@@ -135,13 +132,17 @@ export default function Home() {
                   {sheet.title}
                 </div>
 
-                <div className="text-sm text-slate-400">
-                  ID: {sheet.id}
+                <div className="text-sm text-slate-500 mt-1">
+                  Author: {sheet.author || "Unknown"}
+                </div>
+
+                <div className="text-xs text-slate-400">
+                  Last modified:{" "}
+                  {sheet.lastModified?.toDate?.().toLocaleString() || "—"}
                 </div>
               </div>
 
               <div className="flex gap-4 text-sm">
-
                 <button
                   onClick={() => renameSheet(sheet.id, sheet.title)}
                   className="text-blue-600 hover:underline"
@@ -155,16 +156,12 @@ export default function Home() {
                 >
                   Delete
                 </button>
-
               </div>
-
             </div>
           ))}
-
         </div>
 
       </div>
-
     </main>
   );
 }

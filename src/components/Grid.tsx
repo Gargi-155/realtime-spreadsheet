@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import Cell from "./Cell";
 import { evaluateFormula } from "@/lib/formulas";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
 
 interface GridProps {
   docId: string;
 }
 
-const ROWS = 20;
 const COLS = 10;
 
 function columnLabel(index: number) {
@@ -18,15 +17,16 @@ function columnLabel(index: number) {
 }
 
 export default function Grid({ docId }: GridProps) {
+  const [rows, setRows] = useState(20);
+
   const [cells, setCells] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const [activeRow, setActiveRow] = useState(0);
   const [activeCol, setActiveCol] = useState(0);
 
-  const [colWidths, setColWidths] = useState<number[]>(
-    Array(COLS).fill(120)
-  );
+  const [colWidths, setColWidths] = useState<number[]>(Array(COLS).fill(120));
+  const [rowHeights, setRowHeights] = useState<number[]>(Array(20).fill(40));
 
   // Firestore realtime listener
   useEffect(() => {
@@ -37,25 +37,19 @@ export default function Grid({ docId }: GridProps) {
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data();
 
-      if (data?.cells) {
-        setCells(data.cells);
-    }
-    if (data?.colWidths) {
-        setColWidths(data.colWidths);
-    }
+      if (data?.cells) setCells(data.cells);
+      if (data?.colWidths) setColWidths(data.colWidths);
+      if (data?.rowHeights) setRowHeights(data.rowHeights);
     });
 
     return () => unsubscribe();
   }, [docId]);
 
-  // Save cell change
+  // Save cell value
   const handleChange = async (cellId: string, value: string) => {
     if (!docId) return;
 
-    const newCells = {
-      ...cells,
-      [cellId]: value,
-    };
+    const newCells = { ...cells, [cellId]: value };
 
     setCells(newCells);
     setSaving(true);
@@ -63,8 +57,8 @@ export default function Grid({ docId }: GridProps) {
     const docRef = doc(db, "documents", docId);
 
     await updateDoc(docRef, {
-        cells: newCells,
-        lastModified: new Date(),
+      cells: newCells,
+      lastModified: serverTimestamp(),
     });
 
     setSaving(false);
@@ -73,7 +67,7 @@ export default function Grid({ docId }: GridProps) {
   // Keyboard navigation
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "ArrowDown") {
-      setActiveRow((r) => Math.min(r + 1, ROWS - 1));
+      setActiveRow((r) => Math.min(r + 1, rows - 1));
     }
 
     if (e.key === "ArrowUp") {
@@ -90,11 +84,11 @@ export default function Grid({ docId }: GridProps) {
     }
 
     if (e.key === "Enter") {
-      setActiveRow((r) => Math.min(r + 1, ROWS - 1));
+      setActiveRow((r) => Math.min(r + 1, rows - 1));
     }
   }
 
-  // Column resizing
+  // Column Resize
   function startResize(colIndex: number, startX: number) {
     const startWidth = colWidths[colIndex];
 
@@ -104,17 +98,58 @@ export default function Grid({ docId }: GridProps) {
       setColWidths((prev) => {
         const copy = [...prev];
         copy[colIndex] = Math.max(newWidth, 60);
-        
-        if (docId) {
-            const docRef = doc(db, "documents", docId);
-            updateDoc(docRef, { colWidths: copy });
-        }
-        
         return copy;
-    });
+      });
     }
 
-    function onMouseUp() {
+    function onMouseUp(e: MouseEvent) {
+      const finalWidth = startWidth + (e.clientX - startX);
+
+      const updated = [...colWidths];
+      updated[colIndex] = Math.max(finalWidth, 60);
+
+      setColWidths(updated);
+
+      if (docId) {
+        const docRef = doc(db, "documents", docId);
+        updateDoc(docRef, { colWidths: updated });
+      }
+
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }
+
+  // Row Resize
+  function startRowResize(rowIndex: number, startY: number) {
+    const startHeight = rowHeights[rowIndex] || 40;
+
+    function onMouseMove(e: MouseEvent) {
+      const newHeight = startHeight + (e.clientY - startY);
+
+      setRowHeights((prev) => {
+        const copy = [...prev];
+        copy[rowIndex] = Math.max(newHeight, 25);
+        return copy;
+      });
+    }
+
+    function onMouseUp(e: MouseEvent) {
+      const finalHeight = startHeight + (e.clientY - startY);
+
+      const updated = [...rowHeights];
+      updated[rowIndex] = Math.max(finalHeight, 25);
+
+      setRowHeights(updated);
+
+      if (docId) {
+        const docRef = doc(db, "documents", docId);
+        updateDoc(docRef, { rowHeights: updated });
+      }
+
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     }
@@ -126,15 +161,23 @@ export default function Grid({ docId }: GridProps) {
   return (
     <div
       className="mt-8 overflow-auto border rounded-lg p-2"
-      onKeyDown={handleKeyDown}
       tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
+          setRows((r) => r + 20);
+
+          setRowHeights((prev) => [...prev, ...Array(20).fill(40)]);
+        }
+      }}
     >
-      {/* Saving indicator */}
       <div className="text-sm text-gray-500 mb-2">
         {saving ? "Saving..." : "Saved ✓"}
       </div>
 
-      <table className="border-collapse w-full">
+      <table className="border-collapse table-fixed w-full">
         <thead>
           <tr>
             <th className="w-12"></th>
@@ -142,15 +185,14 @@ export default function Grid({ docId }: GridProps) {
             {Array.from({ length: COLS }).map((_, col) => (
               <th
                 key={col}
-                style={{ width: colWidths[col] }}
+                style={{ width: colWidths[col] || 120 }}
                 className="border bg-gray-100 px-4 py-2 text-center relative"
               >
                 {columnLabel(col)}
 
-                {/* resize handle */}
                 <div
                   onMouseDown={(e) => startResize(col, e.clientX)}
-                  className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                  className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-gray-400"
                 />
               </th>
             ))}
@@ -158,10 +200,18 @@ export default function Grid({ docId }: GridProps) {
         </thead>
 
         <tbody>
-          {Array.from({ length: ROWS }).map((_, row) => (
-            <tr key={row}>
-              <td className="border text-center bg-gray-100">
+          {Array.from({ length: rows }).map((_, row) => (
+            <tr key={row} style={{ height: rowHeights[row] || 40 }}>
+              <td
+                className="border text-center bg-gray-100 relative"
+                style={{ height: rowHeights[row] || 40 }}
+              >
                 {row + 1}
+
+                <div
+                  onMouseDown={(e) => startRowResize(row, e.clientY)}
+                  className="absolute bottom-0 left-0 w-full h-1 cursor-row-resize hover:bg-gray-400"
+                />
               </td>
 
               {Array.from({ length: COLS }).map((_, col) => {
@@ -172,7 +222,7 @@ export default function Grid({ docId }: GridProps) {
                   <td
                     key={id}
                     className="border"
-                    style={{ width: colWidths[col] }}
+                    style={{ width: colWidths[col] || 120 }}
                   >
                     <Cell
                       rawValue={cells[id] || ""}

@@ -16,6 +16,7 @@ export default function DocumentPage() {
 
   const [title, setTitle] = useState("Untitled Sheet");
   const [editing, setEditing] = useState(false);
+  const [cells, setCells] = useState<Record<string, string>>({});
 
   // Load sheet title
   useEffect(() => {
@@ -23,10 +24,11 @@ export default function DocumentPage() {
       const docRef = doc(db, "documents", id);
       const snapshot = await getDoc(docRef);
 
+      
       const data = snapshot.data();
-      if (data?.title) {
-        setTitle(data.title);
-      }
+      if (data?.cells) {
+        setCells(data.cells);
+    }
     }
 
     if (id) loadTitle();
@@ -42,6 +44,39 @@ export default function DocumentPage() {
 
     setEditing(false);
   }
+
+  function exportCSV(cells: Record<string, string>) {
+  const rows = 100;
+  const cols = 26;
+
+  function columnLabel(index: number) {
+    return String.fromCharCode(65 + index);
+  }
+
+  let csv = "";
+
+  for (let r = 1; r <= rows; r++) {
+    let row: string[] = [];
+
+    for (let c = 0; c < cols; c++) {
+      const id = `${columnLabel(c)}${r}`;
+      row.push(cells[id] || "");
+    }
+
+    csv += row.join(",") + "\n";
+  }
+
+  const blob = new Blob([csv], { type: "text/csv" });
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${title}.csv`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
 
   return (
     <main className="min-h-screen bg-slate-100 p-8">
@@ -89,7 +124,15 @@ export default function DocumentPage() {
 
           {/* Presence indicator */}
 
-          <Presence />
+          <div className="flex items-center gap-3">
+            <button
+            onClick={() => exportCSV(cells)}
+            className="text-sm bg-slate-800 text-white px-3 py-1 rounded hover:bg-black"
+            >
+                Export CSV
+            </button>
+            <Presence docId={id} />
+            </div>
 
         </div>
 
