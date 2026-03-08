@@ -1,3 +1,4 @@
+import Presence from "@/components/Presence";
 import Grid from "@/components/Grid";
 
 export default function Home() {
@@ -8,6 +9,8 @@ export default function Home() {
       <p className="text-gray-500 mt-2">
         Create and collaborate on spreadsheet documents in real time.
       </p>
+
+      <Presence />
 
       <Grid />
     </main>
