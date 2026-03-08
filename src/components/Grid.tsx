@@ -1,5 +1,5 @@
 "use client";
-
+import { evaluateFormula } from "@/lib/formulas";
 import { useState } from "react";
 import Cell from "./Cell";
 
@@ -44,10 +44,11 @@ export default function Grid() {
 
                 return (
                   <td key={id} className="border">
-                    <Cell
-                      value={cells[id] || ""}
-                      onChange={(value) => handleChange(id, value)}
-                    />
+                   <Cell
+                   rawValue={cells[id] || ""}
+                   value={evaluateFormula(cells[id] || "", cells)}
+                   onChange={(value) => handleChange(id, value)}
+                   />
                   </td>
                 );
               })}
