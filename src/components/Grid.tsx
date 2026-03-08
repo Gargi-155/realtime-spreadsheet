@@ -6,6 +6,10 @@ import { evaluateFormula } from "@/lib/formulas";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
+interface GridProps {
+  docId: string;
+}
+
 const ROWS = 20;
 const COLS = 10;
 
@@ -13,26 +17,31 @@ function columnLabel(index: number) {
   return String.fromCharCode(65 + index);
 }
 
-export default function Grid() {
+export default function Grid({ docId }: GridProps) {
   const [cells, setCells] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   // Listen for realtime updates from Firestore
   useEffect(() => {
-    const docRef = doc(db, "documents", "sheet1");
+    if (!docId) return;
+
+    const docRef = doc(db, "documents", docId);
 
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data();
+
       if (data?.cells) {
         setCells(data.cells);
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [docId]);
 
   // Update Firestore when a cell changes
   const handleChange = async (cellId: string, value: string) => {
+    if (!docId) return;
+
     const newCells = {
       ...cells,
       [cellId]: value,
@@ -41,7 +50,7 @@ export default function Grid() {
     setCells(newCells);
     setSaving(true);
 
-    const docRef = doc(db, "documents", "sheet1");
+    const docRef = doc(db, "documents", docId);
 
     await updateDoc(docRef, {
       cells: newCells,
@@ -76,7 +85,9 @@ export default function Grid() {
         <tbody>
           {Array.from({ length: ROWS }).map((_, row) => (
             <tr key={row}>
-              <td className="border text-center bg-gray-100">{row + 1}</td>
+              <td className="border text-center bg-gray-100">
+                {row + 1}
+              </td>
 
               {Array.from({ length: COLS }).map((_, col) => {
                 const id = `${columnLabel(col)}${row + 1}`;
@@ -84,10 +95,10 @@ export default function Grid() {
                 return (
                   <td key={id} className="border">
                     <Cell
-                      rawValue={cells[id] || ""}
-                      value={evaluateFormula(cells[id] || "", cells)}
-                      onChange={(value) => handleChange(id, value)}
-                    />
+                rawValue={cells[id] || ""}
+                value={evaluateFormula(cells[id] || "", cells)}
+                onCommit={(value) => handleChange(id, value)}
+                />   
                   </td>
                 );
               })}
