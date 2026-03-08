@@ -63,7 +63,8 @@ export default function Grid({ docId }: GridProps) {
     const docRef = doc(db, "documents", docId);
 
     await updateDoc(docRef, {
-      cells: newCells,
+        cells: newCells,
+        lastModified: new Date(),
     });
 
     setSaving(false);
