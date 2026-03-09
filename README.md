@@ -1,3 +1,4 @@
+**NOTE - TO BE USED IN LIGHT MODE**
 # Realtime Collaborative Spreadsheet
 
 This project is my submission for the **Trademarkia Frontend Engineering Assignment**.
